@@ -18,10 +18,11 @@ import (
 const operatorhubCatalogSource = "operatorhubio-catalog"
 const operatorGroupName = "pulsar-operatorgroup"
 
-const zookeeperCatalogSrcName = "pulsar-manifests"
+const zookeeperCatalogSrcName = "zookeeper-manifests"
 
-//const zookeeperManifestsImageName = "gcr.io/affable-ray-226821/streamnative/operator-index/pulsar-manifests:latest"
-const zookeeperManifestsImageName = "quay.io/fantapsody/operator-index-pulsar-manifests:latest"
+const zookeeperManifestsImageName = "gcr.io/affable-ray-226821/streamnative/operator-manifest/zookeeper-operator:latest"
+
+//const zookeeperManifestsImageName = "quay.io/fantapsody/operator-index-pulsar-manifests:latest"
 const zookeeperSubscriptionName = "zookeeper-operator-subscription"
 const zookeeperPackageName = "zookeeper-operator"
 
