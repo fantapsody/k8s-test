@@ -11,7 +11,7 @@ import (
 
 const csvName = "zookeeper-operator.v0.0.1"
 
-func Remove(kubeConfig *restClient.Config, namespace string) {
+func Remove(kubeConfig *restClient.Config, namespace string) error {
 	kubeClient, err := kubernetes.NewForConfig(util.GetConfigSafe())
 	if err != nil {
 		panic(err)
@@ -28,16 +28,43 @@ func Remove(kubeConfig *restClient.Config, namespace string) {
 		panic(e)
 	}
 
-	if e = oc.OperatorsV1alpha1().Subscriptions(namespace).Delete(zookeeperSubscriptionName, &apiV1.DeleteOptions{}); e != nil {
-		glog.Errorf("Failed to remove subscription %s: %s", zookeeperSubscriptionName, e.Error())
-	} else {
-		glog.Infof("Removed subscription %s", zookeeperSubscriptionName)
+	// delete all subscriptions
+	subList, e := oc.OperatorsV1alpha1().Subscriptions(namespace).List(apiV1.ListOptions{})
+	if e != nil {
+		return e
+	}
+	for _, item := range subList.Items {
+		if e = oc.OperatorsV1alpha1().Subscriptions(namespace).Delete(item.Name, &apiV1.DeleteOptions{}); e != nil {
+			glog.Errorf("Failed to remove subscription %s: %s", item.Name, e.Error())
+		} else {
+			glog.Infof("Removed subscription %s", item.Name)
+		}
 	}
 
-	if e = oc.OperatorsV1alpha1().CatalogSources(namespace).Delete(catalogSrcName, &apiV1.DeleteOptions{}); e != nil {
-		glog.Errorf("Failed to remove catalog source %s: %s", catalogSrcName, e.Error())
-	} else {
-		glog.Infof("Removed catalog source %s", catalogSrcName)
+	catList, e := oc.OperatorsV1alpha1().CatalogSources(namespace).List(apiV1.ListOptions{})
+	if e != nil {
+		return e
+	}
+	for _, item := range catList.Items {
+		if e = oc.OperatorsV1alpha1().CatalogSources(namespace).Delete(item.Name, &apiV1.DeleteOptions{}); e != nil {
+			glog.Errorf("Failed to remove catalog source %s: %s", item.Name, e.Error())
+		} else {
+			glog.Infof("Removed catalog source %s", item.Name)
+		}
+	}
+
+	// delete all CSVs
+	csvList, e := oc.OperatorsV1alpha1().ClusterServiceVersions(namespace).List(apiV1.ListOptions{})
+	if e != nil {
+		return e
+	}
+	for _, item := range csvList.Items {
+		glog.Infof("To remove item %s", item.Name)
+		if e = oc.OperatorsV1alpha1().ClusterServiceVersions(namespace).Delete(item.Name, &apiV1.DeleteOptions{}); e != nil {
+			glog.Errorf("Failed to remove csv %s: %s", item.Name, e.Error())
+		} else {
+			glog.Infof("Removed csv %s", item.Name)
+		}
 	}
 
 	if e = oc.OperatorsV1().OperatorGroups(namespace).Delete(operatorGroupName, &apiV1.DeleteOptions{}); e != nil {
@@ -46,9 +73,5 @@ func Remove(kubeConfig *restClient.Config, namespace string) {
 		glog.Infof("Removed operator group %s", operatorGroupName)
 	}
 
-	if e = oc.OperatorsV1alpha1().ClusterServiceVersions(namespace).Delete(csvName, &apiV1.DeleteOptions{}); e != nil {
-		glog.Errorf("Failed to remove csv %s: %s", csvName, e.Error())
-	} else {
-		glog.Infof("Removed csv %s", csvName)
-	}
+	return nil
 }
