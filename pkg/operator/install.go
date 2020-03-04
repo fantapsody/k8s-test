@@ -27,7 +27,7 @@ const zookeeperSubscriptionName = "zookeeper-operator-subscription"
 const zookeeperPackageName = "zookeeper-operator"
 
 const bookkeeperCatalogSrcName = "bookkeeper-manifests"
-const bookkeeperManifestsImageName = "quay.io/fantapsody/bookeeper-manifests:latest"
+const bookkeeperManifestsImageName = "gcr.io/affable-ray-226821/streamnative/operator-manifest/bookkeeper-operator:snapshot-latest"
 const bookkeeperSubscriptionName = "bookkeeper-operator-subscription"
 const bookkeeperPackageName = "bookkeeper-operator"
 
