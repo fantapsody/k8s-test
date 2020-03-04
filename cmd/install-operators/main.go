@@ -6,5 +6,7 @@ import (
 )
 
 func main() {
-	operator.Install(util.GetConfigSafe(), "sn-system")
+	if err := operator.Install(util.GetConfigSafe(), "default"); err != nil {
+		panic(err)
+	}
 }

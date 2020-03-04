@@ -7,11 +7,11 @@ import (
 	"github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	olmClientVersioned "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
 	coreV1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apiV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	restClient "k8s.io/client-go/rest"
-	"strings"
 	"time"
 )
 
@@ -34,52 +34,71 @@ const bookkeeperPackageName = "bookkeeper-operator"
 const prometheusSubscriptionName = "prometheus-operator-subscription"
 const prometheusPackageName = "prometheus"
 
-func Install(kubeConfig *restClient.Config, namespace string) {
+func Install(kubeConfig *restClient.Config, namespace string) error {
 	kubeClient, err := kubernetes.NewForConfig(util.GetConfigSafe())
 	if err != nil {
-		panic(err)
+		return err
 	}
-	EnsureEnvironment(kubeClient, namespace)
-	InstallOperator(kubeClient, kubeConfig, namespace)
+	if err := EnsureEnvironment(kubeClient, namespace); err != nil {
+		return err
+	}
+	if err := InstallOperator(kubeClient, kubeConfig, namespace); err != nil {
+		return err
+	}
+	return nil
 }
 
-func EnsureEnvironment(kubeClient *kubernetes.Clientset, namespace string) {
+func EnsureEnvironment(kubeClient *kubernetes.Clientset, namespace string) error {
 	namespaceClient := kubeClient.CoreV1().Namespaces()
 	_, e := namespaceClient.Get(namespace, apiV1.GetOptions{})
 	if e != nil {
-		if strings.Contains(e.Error(), "not found") {
+		if errors.IsNotFound(e) {
 			_, e = namespaceClient.Create(&coreV1.Namespace{
 				ObjectMeta: apiV1.ObjectMeta{
 					Name: namespace,
 				},
 			})
 			if e != nil {
-				panic(e)
+				return e
 			}
 			glog.Infof("Created namespace %s", namespace)
 		} else {
-			panic(e)
+			return e
 		}
 	} else {
 		glog.Infof("Namespace %s exists", namespace)
 	}
+	return nil
 }
 
-func InstallOperator(kubeClient *kubernetes.Clientset, kubeConfig *restClient.Config, namespace string) {
+func InstallOperator(kubeClient *kubernetes.Clientset, kubeConfig *restClient.Config, namespace string) error {
 	oc, err := olmClientVersioned.NewForConfig(kubeConfig)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	ensureCatalogSource(oc, namespace, zookeeperCatalogSrcName, zookeeperManifestsImageName)
-	ensureCatalogSource(oc, namespace, bookkeeperCatalogSrcName, bookkeeperManifestsImageName)
-	ensureOperatorGroup(oc, namespace, operatorGroupName)
-	ensureSubscription(oc, namespace, zookeeperSubscriptionName, zookeeperCatalogSrcName, namespace, zookeeperPackageName, "alpha")
-	ensureSubscription(oc, namespace, bookkeeperSubscriptionName, bookkeeperCatalogSrcName, namespace, bookkeeperPackageName, "alpha")
-	ensureSubscription(oc, namespace, prometheusSubscriptionName, operatorhubCatalogSource, "olm", prometheusPackageName, "beta")
+	if err := ensureCatalogSource(oc, namespace, zookeeperCatalogSrcName, zookeeperManifestsImageName); err != nil {
+		return err
+	}
+	if err := ensureCatalogSource(oc, namespace, bookkeeperCatalogSrcName, bookkeeperManifestsImageName); err != nil {
+		return err
+	}
+	if err := ensureOperatorGroup(oc, namespace, operatorGroupName); err != nil {
+		return err
+	}
+	if err := ensureSubscription(oc, namespace, zookeeperSubscriptionName, zookeeperCatalogSrcName, namespace, zookeeperPackageName, "alpha"); err != nil {
+		return err
+	}
+	if err := ensureSubscription(oc, namespace, bookkeeperSubscriptionName, bookkeeperCatalogSrcName, namespace, bookkeeperPackageName, "alpha"); err != nil {
+		return err
+	}
+	if err := ensureSubscription(oc, namespace, prometheusSubscriptionName, operatorhubCatalogSource, "olm", prometheusPackageName, "beta"); err != nil {
+		return err
+	}
+	return nil
 }
 
-func ensureCatalogSource(oc *olmClientVersioned.Clientset, namespace, name, imageName string) {
+func ensureCatalogSource(oc *olmClientVersioned.Clientset, namespace, name, imageName string) error {
 	catalogSource, e := oc.OperatorsV1alpha1().CatalogSources(namespace).Create(&v1alpha1.CatalogSource{
 		ObjectMeta: apiV1.ObjectMeta{
 			Name:      name,
@@ -98,17 +117,18 @@ func ensureCatalogSource(oc *olmClientVersioned.Clientset, namespace, name, imag
 		},
 	})
 	if e != nil {
-		if strings.Contains(e.Error(), "already exists") {
+		if errors.IsAlreadyExists(e) {
 			glog.Infof("Catalog source %s already exists", name)
 		} else {
-			panic(e)
+			return e
 		}
 	} else {
 		glog.Infof("Created catalog source %s", catalogSource.Name)
 	}
+	return nil
 }
 
-func ensureOperatorGroup(oc *olmClientVersioned.Clientset, namespace, name string) {
+func ensureOperatorGroup(oc *olmClientVersioned.Clientset, namespace, name string) error {
 	operatorGroup, e := oc.OperatorsV1().OperatorGroups(namespace).Create(&olmV1.OperatorGroup{
 		ObjectMeta: apiV1.ObjectMeta{
 			Name:      name,
@@ -119,17 +139,18 @@ func ensureOperatorGroup(oc *olmClientVersioned.Clientset, namespace, name strin
 		},
 	})
 	if e != nil {
-		if strings.Contains(e.Error(), "already exists") {
+		if errors.IsAlreadyExists(e) {
 			glog.Infof("Operator group %s already exists", name)
 		} else {
-			panic(e)
+			return e
 		}
 	} else {
 		glog.Infof("Created operator group %s", operatorGroup.Name)
 	}
+	return nil
 }
 
-func ensureSubscription(oc *olmClientVersioned.Clientset, namespace, name, catalogSource, catalogSourceNamespace, packageName, channel string) {
+func ensureSubscription(oc *olmClientVersioned.Clientset, namespace, name, catalogSource, catalogSourceNamespace, packageName, channel string) error {
 	subscription, e := oc.OperatorsV1alpha1().Subscriptions(namespace).Create(&v1alpha1.Subscription{
 		ObjectMeta: apiV1.ObjectMeta{
 			Namespace: namespace,
@@ -143,14 +164,15 @@ func ensureSubscription(oc *olmClientVersioned.Clientset, namespace, name, catal
 		},
 	})
 	if e != nil {
-		if strings.Contains(e.Error(), "already exists") {
+		if errors.IsAlreadyExists(e) {
 			glog.Infof("Operator group %s already exists", name)
 		} else {
-			panic(e)
+			return e
 		}
 	} else {
 		glog.Infof("Created operator group %s", subscription.Name)
 	}
+	return nil
 }
 
 func ensureCSV(oc *olmClientVersioned.Clientset, namespace string) {
