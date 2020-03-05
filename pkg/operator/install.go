@@ -17,6 +17,8 @@ import (
 
 const operatorhubCatalogSource = "operatorhubio-catalog"
 const operatorGroupName = "pulsar-operatorgroup"
+const pulsarCatalogSrcName = "pulsar-manifests"
+const pulsarOperatorsImageName = "gcr.io/affable-ray-226821/streamnative/operator-manifest/pulsar-operators:latest"
 
 const zookeeperCatalogSrcName = "zookeeper-manifests"
 
@@ -77,19 +79,22 @@ func InstallOperator(kubeClient *kubernetes.Clientset, kubeConfig *restClient.Co
 		return err
 	}
 
-	if err := ensureCatalogSource(oc, namespace, zookeeperCatalogSrcName, zookeeperManifestsImageName); err != nil {
+	if err := ensureCatalogSource(oc, namespace, pulsarCatalogSrcName, pulsarOperatorsImageName); err != nil {
 		return err
 	}
-	if err := ensureCatalogSource(oc, namespace, bookkeeperCatalogSrcName, bookkeeperManifestsImageName); err != nil {
-		return err
-	}
+	//if err := ensureCatalogSource(oc, namespace, zookeeperCatalogSrcName, zookeeperManifestsImageName); err != nil {
+	//	return err
+	//}
+	//if err := ensureCatalogSource(oc, namespace, bookkeeperCatalogSrcName, bookkeeperManifestsImageName); err != nil {
+	//	return err
+	//}
 	if err := ensureOperatorGroup(oc, namespace, operatorGroupName); err != nil {
 		return err
 	}
-	if err := ensureSubscription(oc, namespace, zookeeperSubscriptionName, zookeeperCatalogSrcName, namespace, zookeeperPackageName, "alpha"); err != nil {
+	if err := ensureSubscription(oc, namespace, zookeeperSubscriptionName, pulsarCatalogSrcName, namespace, zookeeperPackageName, "alpha"); err != nil {
 		return err
 	}
-	if err := ensureSubscription(oc, namespace, bookkeeperSubscriptionName, bookkeeperCatalogSrcName, namespace, bookkeeperPackageName, "alpha"); err != nil {
+	if err := ensureSubscription(oc, namespace, bookkeeperSubscriptionName, pulsarCatalogSrcName, namespace, bookkeeperPackageName, "alpha"); err != nil {
 		return err
 	}
 	if err := ensureSubscription(oc, namespace, prometheusSubscriptionName, operatorhubCatalogSource, "olm", prometheusPackageName, "beta"); err != nil {

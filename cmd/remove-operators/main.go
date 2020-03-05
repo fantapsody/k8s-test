@@ -6,5 +6,5 @@ import (
 )
 
 func main() {
-	operator.Remove(util.GetConfigSafe(), "sn-system")
+	operator.Remove(util.GetConfigSafe(), "default")
 }
